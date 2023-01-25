@@ -10,8 +10,8 @@ const mock = new Mock(anchor);
 const provider = mock.getProvider();
 const program = anchor.workspace.Erc20 as Program<Erc20>;
 
-let admin, alice, bob;
-let aliceAccount, bobAccount, aliceBobApprove;
+let admin, alice, bob, charlie;
+let aliceAccount, bobAccount, charlieAccount, aliceBobApprove;
 
 describe("ERC20", () => {
   
@@ -29,6 +29,12 @@ describe("ERC20", () => {
       [Buffer.from('createAccount'), bob.publicKey.toBuffer()],
       program.programId,
     );
+    charlie = new anchor.web3.Keypair();
+    await mock.transfer(admin, charlie.publicKey, 10000000);
+    [charlieAccount] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from('createAccount'), charlie.publicKey.toBuffer()],
+      program.programId,
+    );
     [aliceBobApprove] = anchor.web3.PublicKey.findProgramAddressSync(
       [Buffer.from('approveAccount'), aliceAccount.toBuffer(), bob.publicKey.toBuffer()],
       program.programId,
@@ -40,27 +46,33 @@ describe("ERC20", () => {
   })
 
   it("Could create account", async () => {
-    const tx = await program.methods.createAccount()
+    let tx = await program.methods.createAccount()
       .accounts({
         user: alice.publicKey,
         account: aliceAccount,
       })
       .signers([alice])
       .rpc();
-  });
-
-  it("Cant transfer with zero balance", async () => {
-    let tx = await program.methods.createAccount()
+      tx = await program.methods.createAccount()
       .accounts({
         user: bob.publicKey,
         account: bobAccount,
       })
       .signers([bob])
       .rpc();
-    await mock.waitBlock();
+    tx = await program.methods.createAccount()
+      .accounts({
+        user: charlie.publicKey,
+        account: charlieAccount,
+      })
+      .signers([charlie])
+      .rpc();
+  });
+
+  it("Cant transfer with zero balance", async () => {
     let error;
     try {
-      tx = await program.methods.transfer(new BN(1000))
+      let tx = await program.methods.transfer(new BN(1000))
         .accounts({
           user: alice.publicKey,
           account1: aliceAccount,
@@ -141,6 +153,115 @@ describe("ERC20", () => {
       approveAccount: aliceBobApprove,
     })
     .signers([alice])
+    .rpc();
+
+  // transfer to avoid insufficient funds in the next test
+  tx = await program.methods.transfer(new BN(1000))
+    .accounts({
+      user: bob.publicKey,
+      account1: bobAccount,
+      account2: aliceAccount,
+    })
+    .signers([bob])
+    .rpc();
+
+  });
+
+  it("Could not transferFrom with wrong credentials", async () => {
+  let error;
+  try {
+    let tx = await program.methods.transferFrom(new BN(1000))
+      .accounts({
+        user: charlie.publicKey,
+        from: aliceAccount,
+        to: charlieAccount,
+        approveAccount: aliceBobApprove,
+      })
+      .signers([charlie])
+      .rpc();
+  } catch(err) {
+      error = err;
+      assert.isTrue(err instanceof AnchorError);
+      assert.equal(err.error.errorMessage, "You are not authorised for this action");
+  }
+  assert.ok(error != null);
+  });
+  
+  it("Could not transferFrom more than account funds", async () => {
+    let tx = await program.methods.approve(aliceAccount, bob.publicKey, new BN(10000))
+    .accounts({
+      user: alice.publicKey,
+      approveAccount: aliceBobApprove,
+    })
+    .signers([alice])
+    .rpc();
+    
+    let error;
+    try {
+      let tx = await program.methods.transferFrom(new BN(10000))
+        .accounts({
+          user: bob.publicKey,
+          from: aliceAccount,
+          to: charlieAccount,
+          approveAccount: aliceBobApprove,
+        })
+        .signers([bob])
+        .rpc();
+    } catch(err) {
+        error = err;
+        assert.isTrue(err instanceof AnchorError);
+        assert.equal(err.error.errorMessage, "Account has insufficient balance");
+    }
+    assert.ok(error != null);
+    });
+  
+    it("Could not transferFrom more than allowance limit", async () => {
+      let tx = await program.methods.approve(aliceAccount, bob.publicKey, new BN(1000))
+      .accounts({
+        user: alice.publicKey,
+        approveAccount: aliceBobApprove,
+      })
+      .signers([alice])
+      .rpc();
+
+    tx = await program.methods.mint(new BN(10000))
+      .accounts({
+        user: alice.publicKey,
+        account: aliceAccount,
+      })
+      .signers([alice])
+      .rpc();
+
+      let error;
+      try {
+        let tx = await program.methods.transferFrom(new BN(10000))
+          .accounts({
+            user: bob.publicKey,
+            from: aliceAccount,
+            to: charlieAccount,
+            approveAccount: aliceBobApprove,
+          })
+          .signers([bob])
+          .rpc();
+      } catch(err) {
+          error = err;
+          assert.isTrue(err instanceof AnchorError);
+          assert.equal(err.error.errorMessage, "Yor are trying to transfer more than you allowed to");
+      }
+      assert.ok(error != null);
+  });
+  
+
+    
+  it("Could transfer from", async () => {
+    let tx = await program.methods.transferFrom(new BN(1000))
+    .accounts({
+      user: bob.publicKey,
+      from: aliceAccount,
+      to: charlieAccount,
+      approveAccount: aliceBobApprove,
+    })
+    .signers([bob])
     .rpc();
   });
 
