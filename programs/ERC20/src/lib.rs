@@ -6,7 +6,7 @@ declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 pub mod erc20 {
     use super::*;
 
-    pub fn create_account(ctx: Context<CreateAccount>) -> Result<()> {
+    pub fn create_account(_ctx: Context<CreateAccount>) -> Result<()> {
         Ok(())
     }
 
@@ -24,6 +24,12 @@ pub mod erc20 {
         ctx.accounts.account2.balance += amount;
         Ok(())
     }
+
+    pub fn approve(ctx: Context<Approve>, amount: u64) -> Result<()> {
+        ctx.accounts.approve_account.approve = amount;
+        Ok(())
+    }
+
 
 }
 
@@ -61,10 +67,47 @@ pub struct Transfer<'info> {
     account2: Account<'info, TokenAccount>,
 }
 
+#[derive(Accounts)]
+pub struct Approve<'info> {
+    #[account(mut)]
+    user: Signer<'info>,
+    #[account()]
+    account: Account<'info, TokenAccount>,
+    /// CHECK
+    #[account()]
+    operator: AccountInfo<'info>,
+    #[account(
+        init_if_needed,
+        payer = user,
+        space = 8 + 8,
+        seeds = [b"approveAccount", account.key().as_ref(), operator.key().as_ref()],
+        bump,
+        )]
+    approve_account: Account<'info, ApproveAccount>,
+    system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct TransferFrom<'info> {
+    #[account()]
+    user: Signer<'info>,
+    #[account()]
+    from: Account<'info, TokenAccount>,
+    #[account()]
+    to: Account<'info, TokenAccount>,
+
+}
+
 #[account]
 #[derive(Default)]
 pub struct TokenAccount {
     balance: u64,
+}
+
+#[account]
+#[derive(Default)]
+pub struct ApproveAccount {
+    approve: u64,
 }
 
 #[error_code]

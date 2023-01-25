@@ -11,7 +11,7 @@ const provider = mock.getProvider();
 const program = anchor.workspace.Erc20 as Program<Erc20>;
 
 let admin, alice, bob;
-let aliceAccount, bobAccount;
+let aliceAccount, bobAccount, aliceBobApprove;
 
 describe("ERC20", () => {
   
@@ -27,6 +27,10 @@ describe("ERC20", () => {
     await mock.transfer(admin, bob.publicKey, 10000000);
     [bobAccount] = anchor.web3.PublicKey.findProgramAddressSync(
       [Buffer.from('createAccount'), bob.publicKey.toBuffer()],
+      program.programId,
+    );
+    [aliceBobApprove] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from('approveAccount'), aliceAccount.toBuffer(), bob.publicKey.toBuffer()],
       program.programId,
     );
   });
@@ -92,5 +96,17 @@ describe("ERC20", () => {
     .signers([alice])
     .rpc();
 });
+
+  it("Could approve", async () => {
+    let tx = await program.methods.approve(new BN(1000))
+    .accounts({
+      user: alice.publicKey,
+      account: aliceAccount,
+      operator: bob.publicKey,
+      approveAccount: aliceBobApprove,
+    })
+    .signers([alice])
+    .rpc();
+  });
 
 });
