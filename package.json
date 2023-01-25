@@ -5,7 +5,7 @@
     },
     "dependencies": {
         "@project-serum/anchor": "^0.25.0",
-        "@todesstille/mocksolana": "^0.0.35"
+        "@todesstille/mocksolana": "^0.0.37"
     },
     "devDependencies": {
         "@types/bn.js": "^5.1.0",
