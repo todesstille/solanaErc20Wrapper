@@ -25,7 +25,7 @@ pub mod erc20 {
         Ok(())
     }
 
-    pub fn approve(ctx: Context<Approve>, amount: u64) -> Result<()> {
+    pub fn approve(ctx: Context<Approve>, _account: Pubkey, _operator: Pubkey, amount: u64) -> Result<()> {
         ctx.accounts.approve_account.approve = amount;
         Ok(())
     }
@@ -68,19 +68,15 @@ pub struct Transfer<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(_account: Pubkey, _operator: Pubkey)]
 pub struct Approve<'info> {
     #[account(mut)]
     user: Signer<'info>,
-    #[account()]
-    account: Account<'info, TokenAccount>,
-    /// CHECK
-    #[account()]
-    operator: AccountInfo<'info>,
     #[account(
         init_if_needed,
         payer = user,
         space = 8 + 8,
-        seeds = [b"approveAccount", account.key().as_ref(), operator.key().as_ref()],
+        seeds = [b"approveAccount", _account.as_ref(), _operator.as_ref()],
         bump,
         )]
     approve_account: Account<'info, ApproveAccount>,

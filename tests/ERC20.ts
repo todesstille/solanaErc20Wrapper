@@ -98,11 +98,9 @@ describe("ERC20", () => {
 });
 
   it("Could approve", async () => {
-    let tx = await program.methods.approve(new BN(1000))
+    let tx = await program.methods.approve(aliceAccount, bob.publicKey, new BN(1000))
     .accounts({
       user: alice.publicKey,
-      account: aliceAccount,
-      operator: bob.publicKey,
       approveAccount: aliceBobApprove,
     })
     .signers([alice])
