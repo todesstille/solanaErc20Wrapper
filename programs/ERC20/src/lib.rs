@@ -23,7 +23,7 @@ pub mod erc20 {
         let (account, _) = Pubkey::find_program_address
         (&[b"wrappedAccount"], ctx.program_id);
         require!(account == ctx.accounts.vault.key(), ERC20Error::WrongWrappedToken);
-
+        ctx.accounts.user_account.balance += amount;
         token::transfer(
             ctx.accounts.transfer_ctx(),
             amount,
@@ -36,8 +36,8 @@ pub mod erc20 {
     }
 
     pub fn mint(ctx: Context<ERC20Mint>, amount: u64) -> Result<()> {
-        // Implement mint logic
-        // Now it is mint on demand
+        // For tests only
+        // Should be removed
         ctx.accounts.account.balance += amount;
         Ok(())
     }
@@ -107,6 +107,8 @@ pub struct Deposit<'info> {
     token_account: Account<'info, TokenAccount>,
     #[account(mut)]
     vault: Account<'info, TokenAccount>,
+    #[account(mut)]
+    user_account: Account<'info, ERC20Account>,
     token_program: Program<'info, Token>,
     rent: Sysvar<'info, Rent>,
 }

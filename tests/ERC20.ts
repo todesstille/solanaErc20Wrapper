@@ -71,19 +71,6 @@ describe("ERC20", () => {
       .rpc();
   });
 
-  it("Could deposit", async () => {
-    await token.mint(aliceToken.address, 1000);
-    let tx = await program.methods.deposit(new BN(1000))
-      .accounts({
-        user: alice.publicKey,
-        info: infoAccount,
-        tokenAccount: aliceToken.address,
-        vault: wrappedAccount,
-      })
-      .signers([alice])
-      .rpc()
-  });
-
   it("Could create account", async () => {
     let tx = await program.methods.createAccount()
       .accounts({
@@ -106,6 +93,20 @@ describe("ERC20", () => {
       })
       .signers([charlie])
       .rpc();
+  });
+
+  it("Could deposit", async () => {
+    await token.mint(aliceToken.address, 1000);
+    let tx = await program.methods.deposit(new BN(1000))
+      .accounts({
+        user: alice.publicKey,
+        info: infoAccount,
+        tokenAccount: aliceToken.address,
+        vault: wrappedAccount,
+        userAccount: aliceAccount,
+      })
+      .signers([alice])
+      .rpc()
   });
 
   it("Cant transfer with zero balance", async () => {
