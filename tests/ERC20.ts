@@ -86,6 +86,25 @@ describe("ERC20", () => {
       .rpc();
   });
 
+  it("Cant transfer with wrong authority", async () => {
+    let error;
+    try {
+      let tx = await program.methods.transfer(new BN(1000))
+      .accounts({
+        user: bob.publicKey,
+        account1: aliceAccount,
+        account2: bobAccount,
+      })
+      .signers([bob])
+      .rpc();
+    } catch(err) {
+      error = err;
+      assert.isTrue(err instanceof AnchorError);
+      assert.equal(err.error.errorMessage, "You are not authorised for this action");
+    }
+    assert.ok(error != null);
+  });
+
   it("Could transfer", async () => {
     let tx = await program.methods.transfer(new BN(1000))
     .accounts({
@@ -95,7 +114,25 @@ describe("ERC20", () => {
     })
     .signers([alice])
     .rpc();
-});
+  });
+
+  it("Cant approve with wrong authority", async () => {
+    let error;
+    try {
+      let tx = await program.methods.approve(aliceAccount, bob.publicKey, new BN(1000))
+      .accounts({
+        user: bob.publicKey,
+        approveAccount: aliceBobApprove,
+      })
+      .signers([bob])
+      .rpc();
+    } catch(err) {
+      error = err;
+      assert.isTrue(err instanceof AnchorError);
+      assert.equal(err.error.errorMessage, "You are not authorised for this action");
+    }
+    assert.ok(error != null);
+  });
 
   it("Could approve", async () => {
     let tx = await program.methods.approve(aliceAccount, bob.publicKey, new BN(1000))

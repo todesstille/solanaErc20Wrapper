@@ -19,6 +19,7 @@ pub mod erc20 {
     }
 
     pub fn transfer(ctx: Context<Transfer>, amount: u64) -> Result<()> {
+        require!(ctx.accounts.check_authority(ctx.program_id), ERC20Error::WrongAuthority);
         require!(ctx.accounts.account1.balance >= amount, ERC20Error::InsufficientBalance);
         ctx.accounts.account1.balance -= amount;
         ctx.accounts.account2.balance += amount;
@@ -26,6 +27,10 @@ pub mod erc20 {
     }
 
     pub fn approve(ctx: Context<Approve>, _account: Pubkey, _operator: Pubkey, amount: u64) -> Result<()> {
+        let (account, _bump) =
+        Pubkey::find_program_address(&[b"createAccount", ctx.accounts.user.key().as_ref()], ctx.program_id);
+        require!(account == _account, ERC20Error::WrongAuthority);
+
         ctx.accounts.approve_account.approve = amount;
         Ok(())
     }
@@ -85,13 +90,14 @@ pub struct Approve<'info> {
 
 #[derive(Accounts)]
 pub struct TransferFrom<'info> {
-    #[account()]
+    #[account(mut)]
     user: Signer<'info>,
-    #[account()]
+    #[account(mut)]
     from: Account<'info, TokenAccount>,
-    #[account()]
+    #[account(mut)]
     to: Account<'info, TokenAccount>,
-
+    #[account()]
+    approve_account: Account<'info, ApproveAccount>,
 }
 
 #[account]
@@ -106,8 +112,18 @@ pub struct ApproveAccount {
     approve: u64,
 }
 
+impl<'info> Transfer<'info> {
+    fn check_authority(&self, id: &Pubkey) -> bool {
+        let (account_authority, _bump) =
+            Pubkey::find_program_address(&[b"createAccount", self.user.key().as_ref()], id);
+        account_authority == self.account1.key()
+    }
+}
+
 #[error_code]
 pub enum ERC20Error {
     #[msg("Account has insufficient balance")]
     InsufficientBalance,
+    #[msg("You are not authorised for this action")]
+    WrongAuthority,
 }
