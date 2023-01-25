@@ -12,6 +12,8 @@ const program = anchor.workspace.Erc20 as Program<Erc20>;
 
 let admin, alice, bob, charlie;
 let aliceAccount, bobAccount, charlieAccount, aliceBobApprove;
+let token, ercAccount, infoAccount, wrappedAccount;
+let aliceToken;
 
 describe("ERC20", () => {
   
@@ -39,11 +41,48 @@ describe("ERC20", () => {
       [Buffer.from('approveAccount'), aliceAccount.toBuffer(), bob.publicKey.toBuffer()],
       program.programId,
     );
+
+    token = await mock.createToken(6);
+    [infoAccount] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from('accountInfo')],
+      program.programId,
+    );
+    aliceToken = await token.getOrCreateAssociatedAccount(alice.publicKey);
+    [wrappedAccount] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from('wrappedAccount')],
+      program.programId,
+    );
+
   });
 
   beforeEach(async () => {
     await mock.waitBlock();
   })
+
+  it("Could initialize Info", async () => {
+    let tx = await program.methods.initErc20("Token","TKN", 6)
+      .accounts({
+        user: admin.publicKey,
+        info: infoAccount,
+        mintAccount: token.mintAddress,
+        vault: wrappedAccount,
+      })
+      .signers([admin])
+      .rpc();
+  });
+
+  it("Could deposit", async () => {
+    await token.mint(aliceToken.address, 1000);
+    let tx = await program.methods.deposit(new BN(1000))
+      .accounts({
+        user: alice.publicKey,
+        info: infoAccount,
+        tokenAccount: aliceToken.address,
+        vault: wrappedAccount,
+      })
+      .signers([alice])
+      .rpc()
+  });
 
   it("Could create account", async () => {
     let tx = await program.methods.createAccount()
@@ -251,8 +290,6 @@ describe("ERC20", () => {
       assert.ok(error != null);
   });
   
-
-    
   it("Could transfer from", async () => {
     let tx = await program.methods.transferFrom(new BN(1000))
     .accounts({
